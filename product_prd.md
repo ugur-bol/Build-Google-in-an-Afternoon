@@ -27,7 +27,7 @@ Build a functional **web crawler** and **real-time search engine** from scratch 
 ## Users / reviewers
 
 - **Primary**: course evaluator running the system locally
-- **Secondary**: quiz reviewer who manually inspects `data/storage/p.data` and cross-checks API results
+- **Secondary**: reviewer who manually inspects `data/storage/p.data` and cross-checks API results
 
 ## Assumptions & constraints
 
@@ -49,7 +49,7 @@ Build a functional **web crawler** and **real-time search engine** from scratch 
 2. Results return immediately from the in-memory inverted index.
 3. As new pages are indexed, subsequent searches include new results.
 
-### Journey C — Manual (quiz) verification
+### Journey C — Manual verification
 
 1. Reviewer opens `data/storage/p.data` and finds a word present on multiple URLs.
 2. Reviewer computes expected score from stored `(depth, frequency)`.

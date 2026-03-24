@@ -11,7 +11,7 @@ Real-time web crawler + search engine that runs on **localhost** as a single Go 
 - **Searcher**: query returns relevant results as **triples** \((relevant\_url, origin\_url, depth)\) plus scoring fields
 - **Live indexing**: search reads the in-memory index while crawling is still active
 - **System visibility**: dashboard + `GET /api/state` for live metrics
-- **Quiz-ready verification**: raw postings persisted to `data/storage/p.data`
+- **Human-verifiable output**: raw postings persisted to `data/storage/p.data`
 
 ## Architecture (high level)
 
@@ -98,7 +98,7 @@ programming https://example.com/about https://example.com 0 3
 
 One JSON object per line with page metadata (URL, title, status, word count, etc.).
 
-## Relevance scoring (quiz-friendly)
+## Relevance scoring (human-verifiable)
 
 \[
 relevance\_score = (frequency \times 10) + 1000 - (depth \times 5)
@@ -106,7 +106,7 @@ relevance\_score = (frequency \times 10) + 1000 - (depth \times 5)
 
 Implemented in `internal/models/models.go` as `RelevanceScore(frequency, depth)` and returned directly by the search API.
 
-## Manual quiz verification steps
+## Manual verification steps
 
 1. **Start a crawl** (dashboard or `POST /index`).
 2. **Open** `data/storage/p.data` and find a word that appears on multiple URLs.

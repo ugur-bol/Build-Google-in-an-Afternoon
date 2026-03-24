@@ -2,14 +2,14 @@
 
 ## 1. Purpose
 
-This document defines the architecture for **ANTIGRAVITY**, a localhost-runnable web crawler and real-time search engine built for the “Google in a Day” assignment. The design is intentionally optimized for both **project delivery** and **quiz success**. In other words, the system is not only expected to crawl, index, and search correctly, but also to expose its internal decisions in a way that can be **manually verified** from raw storage and API responses.
+This document defines the architecture for **ANTIGRAVITY**, a localhost-runnable web crawler and real-time search engine built for the “Google in a Day” assignment. The design is intentionally optimized for both **project delivery** and **manual verifiability**. In other words, the system is not only expected to crawl, index, and search correctly, but also to expose its internal decisions in a way that can be **manually verified** from raw storage and API responses.
 
 The architecture prioritizes the following:
 
 - **Language-native implementation** instead of high-level crawling/parsing frameworks.
 - **Single-machine scalability** with safe concurrency and controlled load.
 - **Live indexing + live search** so search can run while crawling is still active.
-- **Human-verifiable scoring** so the quiz can be answered directly from persisted data.
+- **Human-verifiable scoring** so relevance ranking can be validated directly from persisted data.
 - **Simple observability** through a dashboard or CLI that clearly shows crawl progress, queue depth, and throttling state.
 
 ---
@@ -52,11 +52,11 @@ Required visibility:
 - Queue depth.
 - Back-pressure / throttling status.
 
-### 2.4 Quiz Alignment Requirement
+### 2.4 Manual Verification Requirement
 
-The later quiz explicitly checks whether:
+This assignment benefits from “Human-in-the-Loop” verification. The system should make it easy to confirm correctness by inspection:
 
-1. Crawled data exists in GitHub.
+1. Crawled data is visible in the repository.
 2. The raw storage file `data/storage/p.data` can be inspected.
 3. A word appearing on multiple URLs can be found.
 4. The API can search that word.
@@ -127,7 +127,7 @@ This architecture allows **search and indexing to proceed concurrently**, which 
 
 ## 5. Core Architectural Principle: Dual Storage Model
 
-To satisfy both runtime performance and quiz inspectability, the system uses **two storage layers at the same time**:
+To satisfy both runtime performance and manual inspectability, the system uses **two storage layers at the same time**:
 
 ### 5.1 Runtime In-Memory Index
 
@@ -145,7 +145,7 @@ Structure:
 Used for:
 
 - GitHub submission visibility,
-- quiz inspection,
+- manual inspection,
 - manual score calculation,
 - optional resume/rebuild flows.
 
@@ -167,7 +167,7 @@ page https://example.com/about https://example.com 1 3
 program https://example.com/docs/install https://example.com 2 5
 ```
 
-This format is intentionally chosen because the quiz explicitly asks the student to:
+This format is intentionally chosen because the verification process requires a reviewer to:
 
 - open `data/storage/p.data`,
 - find a repeated word,
@@ -386,7 +386,7 @@ Simple tokenizer is sufficient:
 - optionally discard 1-character tokens,
 - optionally apply stop-word filtering.
 
-Because the quiz requires manual validation, do **not** overcomplicate preprocessing. Avoid stemming for v1, since it makes raw line inspection harder.
+Because manual validation is a goal, do **not** overcomplicate preprocessing. Avoid stemming for v1, since it makes raw line inspection harder.
 
 ### 9.3 Frequency Counting
 
@@ -395,7 +395,7 @@ For each page:
 - build `map[word]frequency`
 - emit one posting per unique word for that page
 
-This directly supports the quiz’s line-by-line verification process.
+This directly supports line-by-line manual verification.
 
 ---
 
@@ -443,7 +443,7 @@ Recommended additional files:
 - `data/storage/crawl_state.json` → current metrics / session state
 - `data/storage/errors.log` → failed fetches / parse errors
 
-Only `p.data` is essential for the quiz, but these extra files improve traceability.
+Only `p.data` is essential for manual verification, but these extra files improve traceability.
 
 ---
 
@@ -457,7 +457,7 @@ Primary endpoint:
 GET /search?query=<word>&sortBy=relevance
 ```
 
-This endpoint must return results compatible with the quiz.
+This endpoint must return results compatible with manual verification.
 
 Recommended response shape:
 
@@ -479,7 +479,7 @@ Recommended response shape:
 
 ### 11.2 Relevance Formula
 
-To make quiz validation straightforward, the API should use the exact formula expected by the quiz:
+To make manual validation straightforward, the API should use a simple, transparent formula:
 
 ```text
 score = (frequency * 10) + 1000 - (depth * 5)
@@ -491,7 +491,7 @@ Interpretation:
 - `+1000` acts as the exact-match bonus
 - `depth * 5` penalizes pages farther away from the origin
 
-Because the quiz asks for this exact manual computation, the implementation should not hide or transform the formula.
+Because a reviewer should be able to perform the same computation by hand, the implementation should not hide or transform the formula.
 
 ### 11.3 Search Algorithm
 
@@ -503,7 +503,7 @@ For query term `q`:
 4. sort descending by score
 5. return triples / result objects
 
-For v1, search can be **single-term exact match**. This is enough for both the assignment and quiz.
+For v1, search can be **single-term exact match**. This is enough for the assignment requirements.
 
 ### 11.4 Live Search While Indexing
 
@@ -618,7 +618,7 @@ A small debug/info section can mention:
 
 - raw postings are written to `data/storage/p.data`
 
-This is useful because it implicitly guides the evaluator toward the quiz-verifiable artifact.
+This is useful because it implicitly guides the evaluator toward the verifiable storage artifact.
 
 ### 13.2 Why a Dashboard Is Better Than CLI Alone
 
@@ -748,9 +748,9 @@ This structure also helps the evaluator quickly locate the required deliverables
 
 ---
 
-## 17. How This Architecture Helps With the Quiz
+## 17. How This Architecture Supports Human-in-the-Loop Verification
 
-The quiz is not separate from the implementation; it is effectively testing whether the architecture exposes explainable internals.
+Manual verification is not separate from the implementation; it is a deliberate design goal that makes the system easier to audit and explain.
 
 ### 17.1 Raw Storage Requirement
 
@@ -786,9 +786,7 @@ That directly supports the assignment’s “AI Stewardship” evaluation criter
 
 ---
 
-## 18. Chain-of-Thought Style Enhancement Answer (For the Quiz)
-
-The quiz asks: **“How could you enhance the process in a Chain-of-Thought manner?”**
+## 18. “Chain-of-Thought” Style Enhancement (Explainability)
 
 A strong answer is:
 
@@ -842,7 +840,7 @@ Build next:
 
 Success condition:
 
-- quiz word can be searched through the API
+- a word found in raw storage can be searched through the API
 - top result matches manual score
 
 ### Phase 4 — Metrics and Dashboard
@@ -903,14 +901,14 @@ Mitigation:
 - centralize file writing,
 - keep worker boundaries explicit.
 
-### Risk 3: Quiz mismatch
+### Risk 3: Verification mismatch
 
 Mitigation:
 
 - ensure `p.data` exists in repo,
 - ensure format is exactly `word url origin depth frequency`,
 - ensure `/search?query=...&sortBy=relevance` works,
-- ensure score formula exactly matches quiz arithmetic.
+- ensure score formula exactly matches the documented arithmetic.
 
 ### Risk 4: Weak architectural explanation
 
@@ -927,4 +925,4 @@ Mitigation:
 
 The best version of ANTIGRAVITY is a **single-binary Go application** that runs locally, exposes HTTP endpoints, serves a small dashboard, writes a human-readable raw postings file, and supports concurrent crawling and search through thread-safe in-memory indexing. This design is strong because it is simple enough to finish in the project timeframe, yet sophisticated enough to demonstrate concurrency control, back pressure, observability, and explainable relevance ranking.
 
-Most importantly, this architecture is deliberately shaped around the later quiz. By making `data/storage/p.data` a first-class output and by using a transparent formula for `relevance_score`, the system turns internal search behavior into something the student can manually inspect, compute, and defend. That makes the implementation not only functional, but strategically aligned with how the project will actually be evaluated.
+Most importantly, this architecture is deliberately shaped around manual verification. By making `data/storage/p.data` a first-class output and by using a transparent formula for `relevance_score`, the system turns internal search behavior into something a reviewer can manually inspect, compute, and defend. That makes the implementation not only functional, but easy to evaluate and explain.
