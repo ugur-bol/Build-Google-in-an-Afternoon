@@ -1,0 +1,17 @@
+# Binaries
+antigravity
+*.exe
+
+# Data files (regenerated at runtime)
+data/storage/p.data
+data/storage/pages.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

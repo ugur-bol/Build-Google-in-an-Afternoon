@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Real-time Web Crawler & Search Engine Dashboard">
+    <title>Search Engine Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar: Crawl History -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🕷️ Crawl History</h2>
+                <span id="health-badge" class="badge badge-unknown">…</span>
+            </div>
+            <div id="crawl-list" class="crawl-list">
+                <p class="empty-msg">No crawls yet. Start one from the panel →</p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- System State Panel -->
+            <section class="panel state-panel">
+                <div class="panel-header">
+                    <h2>📊 System State</h2>
+                    <div class="pause-controls" id="pause-controls" style="display:none;">
+                        <button id="btn-pause" class="btn btn-sm btn-warning" onclick="pauseCrawl()">⏸ Pause</button>
+                        <button id="btn-resume" class="btn btn-sm btn-success" onclick="resumeCrawl()" style="display:none;">▶ Resume</button>
+                    </div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-label">Status</span>
+                        <span id="m-status" class="metric-value status-idle">idle</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Processed</span>
+                        <span id="m-processed" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Queued</span>
+                        <span id="m-queued" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Active Workers</span>
+                        <span id="m-workers" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Failed</span>
+                        <span id="m-failed" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Skipped</span>
+                        <span id="m-skipped" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Max Queue</span>
+                        <span id="m-maxq" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Throttled</span>
+                        <span id="m-throttled" class="metric-value">No</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Words</span>
+                        <span id="m-words" class="metric-value">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Postings</span>
+                        <span id="m-postings" class="metric-value">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Index Panel -->
+            <section class="panel">
+                <h2>🌐 Start Indexing</h2>
+                <form id="index-form" class="form-row">
+                    <div class="form-group">
+                        <label for="origin">Origin URL</label>
+                        <input type="url" id="origin" placeholder="https://example.com" required>
+                    </div>
+                    <div class="form-group form-group-small">
+                        <label for="maxDepth">Depth</label>
+                        <input type="number" id="maxDepth" value="2" min="0" max="10">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Start Crawl</button>
+                </form>
+                <div id="index-result" class="result-box hidden"></div>
+            </section>
+
+            <!-- Search Panel -->
+            <section class="panel">
+                <h2>🔍 Search</h2>
+                <form id="search-form" class="form-row">
+                    <div class="form-group">
+                        <label for="query">Search Query</label>
+                        <input type="text" id="query" placeholder="Enter search term…" required>
+                    </div>
+                    <button type="submit" class="btn btn-secondary">Search</button>
+                </form>
+                <div id="search-result" class="result-box hidden">
+                    <div id="search-meta"></div>
+                    <div id="search-results-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
