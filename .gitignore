@@ -3,8 +3,9 @@ antigravity
 *.exe
 
 # Data files (regenerated at runtime)
-data/storage/p.data
-data/storage/pages.jsonl
+# NOTE: `pages.jsonl` is intentionally committed for evaluation/inspection.
+# The raw postings file `p.data` can be very large; it is tracked via Git LFS.
+# (See `.gitattributes`.)
 
 # OS
 .DS_Store
