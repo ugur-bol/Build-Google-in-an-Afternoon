@@ -547,23 +547,26 @@ Response:
 GET /search?query=python&sortBy=relevance
 ```
 
-### 12.3 Metrics / Dashboard Data
+### 12.3 State / Dashboard Data
+
+The dashboard is backed by the live state endpoint:
 
 ```http
-GET /metrics
+GET /api/state
 ```
 
-Response example:
+Response example (shape may evolve, but these are the key metrics):
 
 ```json
 {
   "processed": 42,
   "queued": 13,
-  "activeWorkers": 5,
+  "active_workers": 5,
   "failed": 2,
-  "queueDepth": 13,
-  "queueCapacity": 1000,
-  "throttled": false
+  "skipped_visited": 7,
+  "throttled": false,
+  "max_queue_depth": 100,
+  "status": "running"
 }
 ```
 
@@ -705,37 +708,38 @@ ANTIGRAVITY/
 │  └─ server/
 │     └─ main.go
 ├─ internal/
-│  ├─ crawler/
-│  │  ├─ coordinator.go
-│  │  ├─ worker.go
-│  │  ├─ parser.go
-│  │  └─ queue.go
-│  ├─ index/
-│  │  ├─ inverted_index.go
-│  │  ├─ storage.go
-│  │  └─ tokenizer.go
-│  ├─ search/
-│  │  └─ service.go
 │  ├─ api/
 │  │  ├─ handlers.go
 │  │  └─ routes.go
-│  └─ metrics/
-│     └─ metrics.go
+│  ├─ crawler/
+│  │  ├─ crawler.go
+│  │  ├─ fetcher.go
+│  │  └─ parser.go
+│  ├─ indexer/
+│  │  ├─ indexer.go
+│  │  └─ storage.go
+│  ├─ models/
+│  │  └─ models.go
+│  ├─ normalize/
+│  │  └─ normalize.go
+│  ├─ search/
+│  │  └─ search.go
+│  └─ state/
+│     └─ state.go
 ├─ web/
 │  ├─ templates/
-│  │  └─ dashboard.html
+│  │  └─ index.html
 │  └─ static/
-│     └─ app.js
+│     ├─ app.js
+│     └─ styles.css
 ├─ data/
 │  └─ storage/
 │     ├─ p.data
 │     ├─ pages.jsonl
-│     ├─ crawl_state.json
-│     └─ errors.log
 ├─ product_prd.md
 ├─ architecture_plan.md
 ├─ recommendation.md
-├─ readme.md
+├─ README.md
 ├─ go.mod
 └─ go.sum
 ```

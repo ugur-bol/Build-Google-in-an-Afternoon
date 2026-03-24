@@ -1,108 +1,144 @@
-# ANTIGRAVITY — Product Requirements Document
+# ANTIGRAVITY — Product Requirements Document (PRD)
 
-## Problem Statement
+## Context / problem statement
 
-A datathon/assignment requires building a functional single-machine web crawler and search engine that:
-1. Crawls web pages from a given origin URL up to a configurable depth
-2. Indexes content and provides real-time search with transparent relevance scoring
-3. Persists raw term data in a human-inspectable format for quiz verification
+Build a functional **web crawler** and **real-time search engine** from scratch that runs on **localhost**. The solution must demonstrate:
 
-## Goals
+- **Architectural sensibility** (single-machine scalability, clear boundaries)
+- **Concurrency management** (thread-safe structures, no corruption)
+- **Back pressure** (bounded queue/rate of work)
+- **Human-in-the-Loop verification** (results can be manually inspected and validated)
 
-- **Primary:** Build a working crawler + search engine on localhost
-- **Primary:** Score well on assignment requirements AND the quiz that inspects raw storage
-- **Primary:** Transparent, verifiable relevance scoring formula
+## Goals (what “success” means)
 
-## Non-Goals
+- **G1 — Working indexer**: `index(origin, k)` crawls recursively up to depth \(k\), never crawling the same URL twice.
+- **G2 — Working searcher**: `search(query)` returns relevant results and includes the required triple \((relevant\_url, origin\_url, depth)\).
+- **G3 — Live indexing**: search works while indexing is active and reflects newly discovered results.
+- **G4 — Visibility**: a simple dashboard + metrics endpoint show crawl progress, queue depth, and throttling/back-pressure status.
+- **G5 — Verifiability**: raw term postings are persisted in a human-readable file (`data/storage/p.data`) so a reviewer can validate ranking manually.
 
-- Distributed crawling across multiple machines
-- Full-text search with stemming, synonyms, or NLP
-- JavaScript rendering / SPA crawling
-- Production-grade deployment (TLS, auth, load balancing)
+## Non-goals (v1)
 
-## Users
+- Distributed crawling (multi-machine)
+- JavaScript rendering / headless browser crawling
+- NLP relevance (stemming, synonyms, embeddings)
+- Production hardening (auth, multi-tenant isolation, TLS, global scale)
 
-- Assignment evaluators running on localhost
-- Quiz/interview panel inspecting code structure and `p.data`
+## Users / reviewers
 
-## Functional Requirements
+- **Primary**: course evaluator running the system locally
+- **Secondary**: quiz reviewer who manually inspects `data/storage/p.data` and cross-checks API results
 
-### FR-1: Indexing
-- Accept origin URL and max depth via `POST /index`
-- Crawl recursively, never visit same page twice
-- Handle large scope via bounded queue and worker pool
-- Search remains functional during active crawling
+## Assumptions & constraints
 
-### FR-2: Search
-- Accept query via `GET /search?query=<word>&sortBy=relevance`
-- Return results with: `relevant_url`, `origin_url`, `depth`, `frequency`, `relevance_score`
-- Score formula: `(frequency × 10) + 1000 - (depth × 5)`
-- Sort descending by `relevance_score`
+- Crawl scale can be “large”, but must run on a **single machine**.
+- Use **language-native** components for core functionality (Go `net/http`, goroutines, channels, mutexes; HTML tokenization via `golang.org/x/net/html`).
+- Ranking heuristic must be **simple and explainable**.
 
-### FR-3: System Visibility
-- `GET /api/state` returns live metrics
-- Dashboard displays real-time: processed, queued, active workers, throttled status, failed counts
+## User journeys
 
-### FR-4: Raw Storage
-- Persist term data in `data/storage/p.data`
-- Format: `word url origin depth frequency` (one per line)
-- Human-readable and GitHub-visible
+### Journey A — Start a crawl and observe the system
 
-## Non-Functional Requirements
+1. User enters `origin` URL + `maxDepth` in the dashboard (or via API).
+2. System begins crawling with a bounded queue + worker pool.
+3. User monitors progress and back-pressure status via `GET /api/state`.
 
-- **Performance:** 10 concurrent workers, 100ms politeness delay
-- **Safety:** Thread-safe index and visited set using Go concurrency primitives
-- **Reliability:** Graceful handling of fetch failures, non-2xx responses
-- **Inspectability:** Clean code, obvious formula, reviewable in quiz
+### Journey B — Search while indexing is still running
 
-## API Requirements
+1. While crawl is active, user submits a query in the dashboard (or `GET /search`).
+2. Results return immediately from the in-memory inverted index.
+3. As new pages are indexed, subsequent searches include new results.
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/index` | POST | Start crawl job |
-| `/search` | GET | Search indexed content |
-| `/api/state` | GET | System metrics |
-| `/health` | GET | Health check |
+### Journey C — Manual (quiz) verification
+
+1. Reviewer opens `data/storage/p.data` and finds a word present on multiple URLs.
+2. Reviewer computes expected score from stored `(depth, frequency)`.
+3. Reviewer calls `/search?query=<word>&sortBy=relevance` and verifies rank #1 matches the highest manual score.
+
+## Functional requirements
+
+### FR1 — Indexing API (`index(origin, k)`)
+
+- Endpoint: `POST /index` with JSON body `{ "origin": string, "maxDepth": number }`
+- Depth semantics: origin is depth `0`; each hop increments depth by `1`; stop enqueueing new links at `maxDepth`
+- Never crawl the same URL twice (visited set)
+- Must implement back pressure (bounded queue capacity and/or throttle)
+
+### FR2 — Search API (`search(query)`)
+
+- Endpoint: `GET /search?query=<term>&sortBy=relevance`
+- Returns results that include the triple:
+  - `(relevant_url, origin_url, depth)`
+- Must work while indexing is active (concurrent reads of the index)
+- Results are ranked by a transparent relevance heuristic
+
+### FR3 — System visibility (UI + metrics)
+
+- Dashboard served at `/` shows:
+  - indexing progress (processed vs queued)
+  - queue depth
+  - throttled/back-pressure status
+- Metrics endpoint: `GET /api/state` returns the same key signals for programmatic inspection
+
+### FR4 — Persistence for verification
+
+- `data/storage/p.data` contains term postings with the exact line format:
+
+```text
+word url origin depth frequency
+```
+
+- `data/storage/pages.jsonl` stores page metadata (JSONL)
+
+## Relevance heuristic (v1)
+
+\[
+relevance\_score = (frequency \times 10) + 1000 - (depth \times 5)
+\]
+
+This is intentionally simple so it can be manually verified from `p.data`.
+
+## Non-functional requirements
+
+- **Thread safety**: shared structures are protected (mutex/RWMutex/atomic where appropriate)
+- **Controlled load**: bounded work queue and fixed worker concurrency
+- **Resilience**: fetch/parsing failures do not crash the server; failures are counted in state
+- **Inspectability**: clear API, predictable storage format, and deterministic scoring
+
+## API surface (implementation contract)
+
+| Endpoint | Method | Purpose |
+|---|---:|---|
 | `/` | GET | Dashboard UI |
+| `/index` | POST | Start crawl job |
+| `/search` | GET | Query index (works during crawl) |
+| `/api/state` | GET | Live system state + metrics |
+| `/health` | GET | Liveness check |
 
-## Storage Requirements
+## Acceptance criteria (grader checklist)
 
-| File | Format | Purpose |
+1. Server runs on **`localhost:3600`**
+2. `POST /index` starts a crawl job and returns an accepted response
+3. System enforces uniqueness (no duplicate crawls)
+4. System demonstrates back pressure (bounded queue and throttle/limit visibility)
+5. `GET /search` returns results while indexing is still running (live indexing)
+6. Search response includes the required triple \((relevant\_url, origin\_url, depth)\)
+7. `data/storage/p.data` exists and follows the required format
+8. `relevance_score` in API matches manual calculation from `p.data`
+9. Dashboard + `GET /api/state` make system state visible in real time
+
+## Risks & trade-offs (v1)
+
+| Risk | Impact | Mitigation |
 |---|---|---|
-| `data/storage/p.data` | `word url origin depth frequency` | Quiz-inspectable term data |
-| `data/storage/pages.jsonl` | JSON lines | Page metadata |
+| Memory pressure on large crawls | Index growth | bounded queue, depth cap, controlled concurrency |
+| Slow/unreliable sites | crawl stalls / errors | timeouts, failure accounting, graceful error handling |
+| Data corruption under concurrency | incorrect results | RWMutex/Mutex/atomic usage, single-writer storage |
+| Overengineering | missed deadline | simple ranking, simple parsing, focus on rubric |
 
-## Observability Requirements
+## Future enhancements (post-assignment)
 
-- Atomic counters for all system metrics
-- 2-second polling from dashboard
-- Health endpoint for liveness check
-
-## Acceptance Criteria
-
-1. Server runs on `localhost:3600`
-2. POST /index starts crawling and returns accepted status
-3. GET /search returns results sorted by relevance formula
-4. Search works while indexing is active
-5. No duplicate page crawls
-6. `p.data` is created with correct format
-7. API `relevance_score` matches manual calculation from `p.data`
-8. Dashboard shows live queue depth and system status
-
-## Risks & Tradeoffs
-
-| Risk | Mitigation |
-|---|---|
-| Memory pressure from large crawls | Queue cap (10k), depth cap (10) |
-| Slow external sites | 10s fetch timeout, failure counting |
-| Concurrent data corruption | RWMutex on index, Mutex on storage |
-| Queue saturation | Throttle flag, dropped URLs logged |
-
-## Future Enhancements
-
-- Distributed crawling with persistent job queues
-- robots.txt compliance
-- Index persistence and reload on startup
-- TF-IDF or BM25 ranking
-- Sharded index for horizontal scaling
-- Full-text search with stemming
+- Resume/restart support (persist visited set + frontier)
+- robots.txt compliance + per-host scheduling
+- Stronger ranking (TF‑IDF/BM25), multi-term queries
+- Persistent/sharded index for scale-out deployments
